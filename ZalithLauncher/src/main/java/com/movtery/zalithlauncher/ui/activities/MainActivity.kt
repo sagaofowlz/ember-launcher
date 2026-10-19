@@ -18,6 +18,16 @@
 
 package com.movtery.zalithlauncher.ui.activities
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
@@ -306,6 +316,7 @@ class MainActivity : BaseAppCompatActivity() {
         )
 
         setContent {
+            var showEmberUi by remember { mutableStateOf(true) }
             ZalithLauncherTheme(
                 backgroundViewModel = backgroundViewModel,
                 festivals = festivals
@@ -339,6 +350,36 @@ class MainActivity : BaseAppCompatActivity() {
                     )
 
                     //启动游戏操作流程
+                    if (showEmberUi) {
+                        EmberDashboard(
+                            activity = this@MainActivity,
+                            onPlay = {
+                                eventViewModel.sendEvent(EventViewModel.Event.Launch.Game(VersionsManager.currentVersion.value))
+                            },
+                            onOpenAccounts = {
+                                showEmberUi = false
+                                screenBackStackModel.mainScreen.navigateTo(
+                                    screenKey = NormalNavKey.AccountManager(FirstLoginMenu.NORMAL)
+                                )
+                            },
+                            onOpenVersions = {
+                                showEmberUi = false
+                                screenBackStackModel.mainScreen.removeAndNavigateTo(
+                                    remove = NestedNavKey.VersionSettings::class,
+                                    screenKey = NormalNavKey.VersionsManager
+                                )
+                            }
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            TextButton(
+                                onClick = { showEmberUi = true },
+                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                            ) {
+                                Text("← Ember")
+                            }
+                        }
+                    }
                     LaunchGameOperation(
                         activity = this@MainActivity,
                         eventViewModel = eventViewModel,
@@ -351,11 +392,13 @@ class MainActivity : BaseAppCompatActivity() {
                             errorViewModel.showError(it)
                         },
                         toAccountManageScreen = { menu ->
+                            showEmberUi = false
                             screenBackStackModel.mainScreen.navigateTo(
                                 screenKey = NormalNavKey.AccountManager(menu)
                             )
                         },
                         toVersionManageScreen = {
+                            showEmberUi = false
                             screenBackStackModel.mainScreen.removeAndNavigateTo(
                                 remove = NestedNavKey.VersionSettings::class,
                                 screenKey = NormalNavKey.VersionsManager
