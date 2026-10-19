@@ -359,7 +359,7 @@ class MainActivity : BaseAppCompatActivity() {
                             onOpenAccounts = {
                                 showEmberUi = false
                                 screenBackStackModel.mainScreen.navigateTo(
-                                    screenKey = NormalNavKey.AccountManager(FirstLoginMenu.NORMAL)
+                                    screenKey = NormalNavKey.AccountManager()
                                 )
                             },
                             onOpenVersions = {
