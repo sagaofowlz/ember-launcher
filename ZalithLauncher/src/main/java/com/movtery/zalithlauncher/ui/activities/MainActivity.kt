@@ -76,6 +76,7 @@ import com.movtery.zalithlauncher.ui.guide.NextTipLabel
 import com.movtery.zalithlauncher.ui.guide.rememberAppGuides
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
+import com.movtery.zalithlauncher.ui.screens.content.FirstLoginMenu
 import com.movtery.zalithlauncher.ui.screens.content.elements.Background
 import com.movtery.zalithlauncher.ui.screens.content.elements.LaunchGameOperation
 import com.movtery.zalithlauncher.ui.screens.content.elements.TitleTaskFlowDialog
@@ -328,27 +329,27 @@ class MainActivity : BaseAppCompatActivity() {
                     guides.mainScreen,
                     nextTip = { NextTipLabel(it) }
                 ) {
-                    Background(
-                        modifier = Modifier.fillMaxSize(),
-                        viewModel = backgroundViewModel
-                    )
+                    if (!showEmberUi) {
+                        Background(
+                            modifier = Modifier.fillMaxSize(),
+                            viewModel = backgroundViewModel
+                        )
 
-                    MainScreen(
-                        screenBackStackModel = screenBackStackModel,
-                        eventViewModel = eventViewModel,
-                        modpackImportViewModel = modpackImportViewModel,
-                        modifyVersionViewModel = modifyVersionViewModel,
-                        submitError = {
-                            errorViewModel.showError(it)
-                        }
-                    )
+                        MainScreen(
+                            screenBackStackModel = screenBackStackModel,
+                            eventViewModel = eventViewModel,
+                            modpackImportViewModel = modpackImportViewModel,
+                            modifyVersionViewModel = modifyVersionViewModel,
+                            submitError = {
+                                errorViewModel.showError(it)
+                            }
+                        )
 
-                    //节日彩蛋效果层
-                    FestivalEffects(
-                        modifier = Modifier.fillMaxSize(),
-                        festivals = festivals
-                    )
-
+                        FestivalEffects(
+                            modifier = Modifier.fillMaxSize(),
+                            festivals = festivals
+                        )
+                    }
                     //启动游戏操作流程
                     if (showEmberUi) {
                         EmberDashboard(
@@ -360,6 +361,18 @@ class MainActivity : BaseAppCompatActivity() {
                                 showEmberUi = false
                                 screenBackStackModel.mainScreen.navigateTo(
                                     screenKey = NormalNavKey.AccountManager()
+                                )
+                            },
+                            onOpenMicrosoftLogin = {
+                                showEmberUi = false
+                                screenBackStackModel.mainScreen.navigateTo(
+                                    screenKey = NormalNavKey.AccountManager(FirstLoginMenu.MICROSOFT)
+                                )
+                            },
+                            onOpenElyByLogin = {
+                                showEmberUi = false
+                                screenBackStackModel.mainScreen.navigateTo(
+                                    screenKey = NormalNavKey.AccountManager(FirstLoginMenu.ELY_BY)
                                 )
                             },
                             onOpenVersions = {

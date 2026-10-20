@@ -31,6 +31,7 @@ import com.movtery.zalithlauncher.game.path.getGameHome
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.setting.AllSettings
+import com.movtery.zalithlauncher.setting.enums.ResolutionRule
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -48,6 +49,8 @@ fun EmberDashboard(
     activity: MainActivity,
     onPlay: () -> Unit,
     onOpenAccounts: () -> Unit,
+    onOpenMicrosoftLogin: () -> Unit,
+    onOpenElyByLogin: () -> Unit,
     onOpenVersions: () -> Unit,
 ) {
     AndroidView(
@@ -87,6 +90,8 @@ fun EmberDashboard(
                         webView = this,
                         onPlay = onPlay,
                         onOpenAccounts = onOpenAccounts,
+                        onOpenMicrosoftLogin = onOpenMicrosoftLogin,
+                        onOpenElyByLogin = onOpenElyByLogin,
                         onOpenVersions = onOpenVersions,
                     ),
                     "Ember"
@@ -106,6 +111,8 @@ private class EmberHybridBridge(
     private val webView: WebView,
     private val onPlay: () -> Unit,
     private val onOpenAccounts: () -> Unit,
+    private val onOpenMicrosoftLogin: () -> Unit,
+    private val onOpenElyByLogin: () -> Unit,
     private val onOpenVersions: () -> Unit,
 ) {
     private val io = Executors.newCachedThreadPool { runnable ->
@@ -134,6 +141,23 @@ private class EmberHybridBridge(
         settings.put("mcVersion", prefs.getString("mcVersion", actualMcVersion) ?: actualMcVersion)
         settings.put("loader", prefs.getString("loader", "fabric") ?: "fabric")
         settings.put("memory", prefs.getString("memory", AllSettings.ramAllocation.getValue()?.toString() ?: "2048") ?: "2048")
+        // One-time Ember defaults: migrate an existing Zalith profile to a lower render scale once,
+        // then remember the user's selection in Ember's own preferences.
+        val storedRenderScale = prefs.getString("renderScale", null)?.toIntOrNull()
+        val renderScale = (storedRenderScale ?: 75).coerceIn(50, 100)
+        if (storedRenderScale == null) {
+            AllSettings.resolutionRule.save(ResolutionRule.PERCENTAGE)
+            AllSettings.resolutionRatio.save(renderScale)
+            prefs.edit().putString("renderScale", renderScale.toString()).apply()
+        }
+        val storedSustainedPerformance = prefs.getString("sustainedPerformance", null)
+        val sustainedPerformance = if (storedSustainedPerformance == "off") "off" else "on"
+        if (storedSustainedPerformance == null) {
+            AllSettings.sustainedPerformance.save(true)
+            prefs.edit().putString("sustainedPerformance", sustainedPerformance).apply()
+        }
+        settings.put("renderScale", renderScale.toString())
+        settings.put("sustainedPerformance", sustainedPerformance)
         settings.put("touchScale", prefs.getString("touchScale", "100") ?: "100")
         settings.put("msClientId", prefs.getString("msClientId", "") ?: "")
         return JSONObject()
@@ -148,7 +172,7 @@ private class EmberHybridBridge(
 
     @JavascriptInterface
     fun saveSetting(key: String, value: String) {
-        val allowed = setOf("mcVersion", "loader", "memory", "touchScale", "msClientId")
+        val allowed = setOf("mcVersion", "loader", "memory", "renderScale", "sustainedPerformance", "touchScale", "msClientId")
         if (key !in allowed) return
         val clean = value.take(80)
         prefs.edit().putString(key, clean).apply()
@@ -157,6 +181,15 @@ private class EmberHybridBridge(
                 // This is the real runtime JVM-memory setting, not just a display preference.
                 AllSettings.ramAllocation.save(memoryMb.coerceAtLeast(256))
             }
+        }
+        if (key == "renderScale") {
+            clean.toIntOrNull()?.let { scalePercent ->
+                AllSettings.resolutionRule.save(ResolutionRule.PERCENTAGE)
+                AllSettings.resolutionRatio.save(scalePercent.coerceIn(50, 100))
+            }
+        }
+        if (key == "sustainedPerformance") {
+            AllSettings.sustainedPerformance.save(clean == "on")
         }
     }
 
@@ -195,6 +228,16 @@ private class EmberHybridBridge(
     @JavascriptInterface
     fun openNativeAccounts() {
         activity.runOnUiThread { onOpenAccounts() }
+    }
+
+    @JavascriptInterface
+    fun openMicrosoftLogin() {
+        activity.runOnUiThread { onOpenMicrosoftLogin() }
+    }
+
+    @JavascriptInterface
+    fun openElyByLogin() {
+        activity.runOnUiThread { onOpenElyByLogin() }
     }
 
     @JavascriptInterface

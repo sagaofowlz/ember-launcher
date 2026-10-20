@@ -61,6 +61,7 @@ import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.context.COPY_LABEL_ACCOUNT_UUID
 import com.movtery.zalithlauncher.game.account.Account
 import com.movtery.zalithlauncher.game.account.AccountsManager
+import com.movtery.zalithlauncher.game.account.addOtherServer
 import com.movtery.zalithlauncher.game.account.auth_server.data.AuthServer
 import com.movtery.zalithlauncher.game.account.isAuthServerAccount
 import com.movtery.zalithlauncher.game.account.isMicrosoftAccount
@@ -135,7 +136,9 @@ enum class FirstLoginMenu {
     /** 打开微软登录菜单 */
     MICROSOFT,
     /** 打开总登录菜单 */
-    NORMAL
+    NORMAL,
+    /** Discover Ely.by and open its account login dialog */
+    ELY_BY
 }
 
 /**
@@ -181,7 +184,9 @@ fun AccountManageScreen(
         )
     }
 
-    LaunchedEffect(Unit) {
+    var elyByLoginDispatched by remember(key.loginMenu) { mutableStateOf(false) }
+
+    LaunchedEffect(key.loginMenu) {
         when (key.loginMenu) {
             FirstLoginMenu.NONE -> {}
             FirstLoginMenu.MICROSOFT -> {
@@ -190,8 +195,27 @@ fun AccountManageScreen(
             FirstLoginMenu.NORMAL -> {
                 actions.onIntent(AccountManageIntent.UpdateLoginMenuOp(LoginMenuOperation.Login))
             }
+            FirstLoginMenu.ELY_BY -> {
+                if (profileUiState.authServers.none { it.baseUrl.contains("ely.by", ignoreCase = true) || it.serverName.equals("Ely.by", ignoreCase = true) }) {
+                    addOtherServer("ely.by")
+                }
+            }
         }
+    }
 
+    LaunchedEffect(key.loginMenu, profileUiState.authServers) {
+        if (key.loginMenu == FirstLoginMenu.ELY_BY && !elyByLoginDispatched) {
+            val elyServer = profileUiState.authServers.firstOrNull {
+                it.baseUrl.contains("ely.by", ignoreCase = true) || it.serverName.equals("Ely.by", ignoreCase = true)
+            }
+            if (elyServer != null) {
+                elyByLoginDispatched = true
+                actions.onIntent(AccountManageIntent.UpdateOtherLoginOp(OtherLoginOperation.OnLogin(elyServer)))
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
                 is AccountManageEffect.ShowError -> {
@@ -210,6 +234,8 @@ fun AccountManageScreen(
             loginUiState = loginUiState,
             profileUiState = profileUiState,
             operationUiState = operationUiState,
+            minimalAuthMode = key.loginMenu == FirstLoginMenu.MICROSOFT || key.loginMenu == FirstLoginMenu.ELY_BY,
+            authProviderTitle = if (key.loginMenu == FirstLoginMenu.ELY_BY) "Ely.by sign-in" else "Microsoft sign-in",
             actions = actions
         )
     }
@@ -224,37 +250,61 @@ private fun AccountManageContent(
     loginUiState: AccountManageViewModel.LoginUiState,
     profileUiState: AccountManageViewModel.ProfileUiState,
     operationUiState: AccountManageViewModel.OperationUiState,
+    minimalAuthMode: Boolean,
+    authProviderTitle: String,
     actions: AccountActions,
 ) {
-    Row(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        ActionsLayout(
-            isVisible = isVisible,
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(all = 12.dp)
-                .weight(3f),
-            currentAccount = profileUiState.currentAccount,
-            actions = actions
-        )
+    if (minimalAuthMode) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("EMBER", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(authProviderTitle, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Complete the sign-in dialog to connect your account. Authentication is handled by the runtime's native flow.")
+                }
+            }
+        }
+    } else {        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            ActionsLayout(
+                isVisible = isVisible,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(all = 12.dp)
+                    .weight(3f),
+                currentAccount = profileUiState.currentAccount,
+                actions = actions
+            )
 
-        AccountsLayout(
-            isVisible = isVisible,
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(top = 12.dp, end = 12.dp, bottom = 12.dp)
-                .weight(7f),
-            accounts = profileUiState.accounts,
-            currentAccount = profileUiState.currentAccount,
-            accountOperation = operationUiState.accountOp,
-            accountSkinOperation = operationUiState.accountSkinOp,
-            accountSkinDialogState = operationUiState.accountSkinDialogState,
-            accountCapes = profileUiState.accountCapeOpMap,
-            actions = actions
-        )
+            AccountsLayout(
+                isVisible = isVisible,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(top = 12.dp, end = 12.dp, bottom = 12.dp)
+                    .weight(7f),
+                accounts = profileUiState.accounts,
+                currentAccount = profileUiState.currentAccount,
+                accountOperation = operationUiState.accountOp,
+                accountSkinOperation = operationUiState.accountSkinOp,
+                accountSkinDialogState = operationUiState.accountSkinDialogState,
+                accountCapes = profileUiState.accountCapeOpMap,
+                actions = actions
+            )
+        }
     }
-
     LoginMenuOperation(loginUiState.menuOp, actions, profileUiState.authServers)
     MicrosoftLoginOperation(loginUiState.microsoftOp, actions)
     LocalLoginOperation(loginUiState.localOp, actions)

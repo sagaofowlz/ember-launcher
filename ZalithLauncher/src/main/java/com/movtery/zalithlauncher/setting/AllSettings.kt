@@ -66,7 +66,7 @@ object AllSettings : SettingsRegistry() {
     /**
      * 分辨率
      */
-    val resolutionRatio = intSetting("resolutionRatio", 100, 25..300)
+    val resolutionRatio = intSetting("resolutionRatio", 75, 25..300)
 
     /**
      * 分辨率规则
@@ -96,7 +96,7 @@ object AllSettings : SettingsRegistry() {
     /**
      * 持续性能模式
      */
-    val sustainedPerformance = boolSetting("sustainedPerformance", false)
+    val sustainedPerformance = boolSetting("sustainedPerformance", true)
 
     /**
      * 游戏运行时请求系统切换到同分辨率最高刷新率档位（关闭则回落系统自适应刷新）
