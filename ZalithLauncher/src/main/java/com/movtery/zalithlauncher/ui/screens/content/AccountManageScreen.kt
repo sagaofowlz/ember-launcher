@@ -906,6 +906,8 @@ private fun AccountManageContentPreview() {
                     loginUiState = AccountManageViewModel.LoginUiState(),
                     profileUiState = AccountManageViewModel.ProfileUiState(),
                     operationUiState = AccountManageViewModel.OperationUiState(),
+                    minimalAuthMode = false,
+                    authProviderTitle = "Account manager preview",
                     actions = AccountActions(
                         onIntent = {},
                         openLink = {},
